@@ -22,7 +22,7 @@ namespace AssetPinger
             if (!optionsBuilder.IsConfigured)
             {
 #warning To protect potentially sensitive information in your connection string, you should move it out of source code. See http://go.microsoft.com/fwlink/?LinkId=723263 for guidance on storing connection strings.
-                optionsBuilder.UseSqlite("Data Source=t:\\COMMON\\Monitoring\\SDIHU Asset Explorer\\AssetDB.db");
+                optionsBuilder.UseSqlite(@"Data Source=I:\COMMON\Monitoring\SDIHU Asset Explorer\AssetDB.db");
             }
         }
 

@@ -1,4 +1,5 @@
-﻿using NLog;
+﻿using Microsoft.EntityFrameworkCore;
+using NLog;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -34,20 +35,58 @@ namespace AssetPinger
 
         static public async void StartPing()
         {
-            List<Assets> ActiveAssets = new List<Assets>(Context.Assets.Where(item => item.IsArchive == false).ToList());
-            var tasks = new List<Task>();
-
-            for (int i = 0; i < ActiveAssets.Count(); i++)
+            try
             {
-                Ping p = new Ping();
-                var task = PingAndUpdateAsync(p, ActiveAssets[i]);
-                tasks.Add(task);
+                List<Assets> ActiveAssets = new List<Assets>(Context.Assets.Where(item => item.IsArchive == false).ToList());
+                var tasks = new List<Task>();
+
+                for (int i = 0; i < ActiveAssets.Count(); i++)
+                {
+                    if (string.IsNullOrWhiteSpace(ActiveAssets[i].Ip) || !ActiveAssets[i].Ip.StartsWith("106.114."))
+                    {
+                        continue;
+                    }
+
+                    string IPAddressOfCurrentAsset = ActiveAssets[i].Ip ?? "";
+                    var parts = IPAddressOfCurrentAsset.Split('.');
+                    bool isValidIPAddress = parts.Length == 4 && !parts.Any(
+                       x =>
+                       {
+                           return Int32.TryParse(x, out int y) && y > 255 || y < 1;
+                       });
+                    if (!isValidIPAddress)
+                    {
+                        continue;
+                    }
+
+                    Ping p = new Ping();
+                    var task = PingAndUpdateAsync(p, ActiveAssets[i]);
+                    tasks.Add(task);
+                }
+
+                await Task.WhenAll(tasks).ContinueWith(t =>
+                {
+                    ActiveAssets.Clear();
+                });
             }
-
-            await Task.WhenAll(tasks).ContinueWith(t => 
+            catch (NullReferenceException ex)
             {
-                ActiveAssets.Clear();
-            });
+                Console.WriteLine(ex.Message);
+                Logger.Error(ex.Message, "NullReferenceException");
+                throw new Exception(ex.Message);
+            }
+            catch (DbUpdateException ex)
+            {
+                Console.WriteLine(ex.Message);
+                Logger.Error(ex.Message, "DbUpdateException");
+                throw new Exception(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+                Logger.Error(ex.Message, "Exception");
+                throw new Exception(ex.Message);
+            }
         }
 
         static private async Task PingAndUpdateAsync(Ping p, Assets asset)
@@ -74,9 +113,23 @@ namespace AssetPinger
                     }
                 }
             }
+            catch (NullReferenceException ex)
+            {
+                Console.WriteLine(ex.Message);
+                Logger.Error(ex.Message, "NullReferenceException");
+                throw new Exception(ex.Message);
+            }
+            catch (DbUpdateException ex)
+            {
+                Console.WriteLine(ex.Message);
+                Logger.Error(ex.Message, "DbUpdateException");
+                throw new Exception(ex.Message);
+            }
             catch (Exception ex)
             {
-                Logger.Error(ex.Message);
+                Console.WriteLine(ex.Message);
+                Logger.Error(ex.Message, "Exception");
+                throw new Exception(ex.Message);
             }
         }
     }
